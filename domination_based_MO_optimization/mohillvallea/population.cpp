@@ -14,6 +14,8 @@
 #include "mathfunctions.h"
 #include "fitness.h"
 #include "cluster.h"
+#include <unistd.h>
+
 
 namespace hicam
 {
@@ -236,6 +238,7 @@ namespace hicam
   {
     
     for(size_t i = skip_number_of_elites; i < sols.size(); ++i) {
+      //std::cout<<"EVALUATE sol"<<i<<std::endl;
       fitness_function->evaluate(sols[i]);
       number_of_evaluations++;
     }
@@ -511,7 +514,7 @@ namespace hicam
   }
 
 
-  unsigned int population_t::fill_vector_normal(std::vector<solution_pt> & solutions, size_t sample_size, size_t problem_size, const vec_t & mean, const matrix_t & cholesky, bool use_boundary_repair, const vec_t & lower_param_range, const vec_t & upper_param_range, size_t number_of_elites, rng_pt rng) const
+  unsigned int population_t::fill_vector_normal(std::vector<solution_pt> & solutions, vec_t & N, size_t sample_size, size_t problem_size, const vec_t & mean, const matrix_t & cholesky, bool use_boundary_repair, const vec_t & lower_param_range, const vec_t & upper_param_range, size_t number_of_elites, rng_pt rng) const
   {
 
     // Resize the population vector
@@ -536,8 +539,8 @@ namespace hicam
       }
 
 
-      number_of_samples += sample_normal(solutions[i]->param, problem_size, mean, cholesky, use_boundary_repair, lower_param_range, upper_param_range, rng);
-      
+      number_of_samples += sample_normal(solutions[i]->param, N, problem_size, mean, cholesky, use_boundary_repair, lower_param_range, upper_param_range, rng);
+    
       for(size_t j = 0; j < solutions[i]->param.size(); ++j) {
         if(isnan(solutions[i]->param[j])) {
           std::cout << "NaN param sampled." << std::endl;
@@ -545,7 +548,7 @@ namespace hicam
       }
 
     }
-
+ 
     return number_of_samples;
   }
   
@@ -1069,7 +1072,6 @@ namespace hicam
   // two reference points.
   double population_t::compute2DHyperVolume(double max_0, double max_1) const
   {
-
     size_t n = sols.size();
 
     if (n == 0) {
@@ -1100,8 +1102,6 @@ namespace hicam
 
     return area;
   }
-
- 
 }
 
 
@@ -1382,4 +1382,81 @@ double hicam::population_t::param_distance(const population_t & other_pop) const
 
   return (summed_distance / this->size());
 
+}
+
+// Rank Gaussian based on how much increase the Loss.
+// The Gaussian that LESS incresethe the LOSS is the worst gaussian to optimize
+void hicam::population_t::white_box_optimization(size_t i, fitness_pt fitness, unsigned int & number_of_evaluations, const vec_t & lower_param_range, const vec_t & upper_param_range,  vec_t & N, const vec_t & mean, const matrix_t & cholesky, const int varm, rng_pt rng)
+{
+
+  for(size_t i = 0; i<this->popsize(); i++)
+  {
+    fitness->evaluate(sols[i]);
+    //number_of_evaluations++; TODO Check where evaluate to pass as a parameter
+    double original_fitness = sols[i]->obj[0];
+    std::vector<double> scores;
+    std::vector<solution_t> without_single_rbf = sols[i]->remove_RBF();
+    int k = 0;
+    //      std::cout<<"ORIGINAL RBF: \t";
+    // for(auto p: sols[i]->param)
+    //  std::cout<<p<<"\t";
+    //std::cout<<std::endl;
+    for(solution_t &s : without_single_rbf)
+    {
+
+      fitness->evaluate(s);
+
+      number_of_evaluations++;
+      scores.push_back(s.obj[0]);
+      //for(auto score: scores)
+      //  std::cout<<score<<std::endl;
+      //std::cout<<std::endl;
+      //std::cout<<"MOD RBF "<<k<<": \t";
+      //for(auto p: s.param)
+      //  std::cout<<p<<"\t";
+      //std::cout<<"MOD_FITNESS f0:"<<s.obj[0]<<" f1:"<<s.obj[1]<<std::endl;
+      k++;
+    }
+    for(auto &score: scores)
+    {
+      //std::cout<<original_fitness<<" - "<<score<<" = ";
+      score = original_fitness - score;
+      //std::cout<<score<<std::endl;
+    }
+    
+    int worst_rbf_index = std::max_element(scores.begin(), scores.end()) - scores.begin();
+    //se togliendo qualsiasi gaussiana peggioro (differenza negativa), non fare nulla
+    if (scores[worst_rbf_index]<=0)
+      return;
+    else
+    {
+
+      vec_t new_params(3);
+      std::normal_distribution<double> normal(0,1);
+      bool sample_in_range = false;
+      do{
+        // sample a new solution
+        for (size_t i = 0; i < 3; ++i) {
+          new_params[i] = normal(*rng);
+        }
+        vec_t N_new(N);
+        N_new[3*worst_rbf_index]=new_params[0];
+        N_new[3*worst_rbf_index+1]=new_params[1];
+        N_new[3*worst_rbf_index+2]=new_params[2];
+        double c_var = varm*(original_fitness-scores[worst_rbf_index])/original_fitness; //TODO: analysis about multiplier 10
+        //std::cout<<"CHOLESKY["<<cholesky.cols()<<","<<cholesky.rows()<<"]"<<std::endl;
+        //std::cout<<"OLD PARAMS:\t";
+        //std::cout<<sols[i]->param[3*worst_rbf_index]<<" "<<sols[i]->param[3*worst_rbf_index+1] <<" "<<sols[i]->param[3*worst_rbf_index+2]<<std::endl;
+        new_params = mean + cholesky.product(N_new)*c_var;
+        boundary_repair(new_params, lower_param_range, upper_param_range);
+        sample_in_range = in_range(new_params, lower_param_range, upper_param_range);
+      } while(!sample_in_range);
+
+      //std::cout<<"NEW PARAMS:\t";
+      //std::cout<<new_params[3*worst_rbf_index]<<" "<<new_params[3*worst_rbf_index+1] <<" "<<new_params[3*worst_rbf_index+2]<<std::endl;
+      sols[i]->param[3*worst_rbf_index] = new_params[3*worst_rbf_index];
+      sols[i]->param[3*worst_rbf_index+1] = new_params[3*worst_rbf_index+1];
+      sols[i]->param[3*worst_rbf_index+2] = new_params[3*worst_rbf_index+2];
+    }
+  }
 }

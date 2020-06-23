@@ -27,7 +27,9 @@ hicam::optimizer_t::optimizer_t(
   unsigned int maximum_number_of_seconds,
   double vtr,
   bool use_vtr,
-  rng_pt rng
+  rng_pt rng,
+  bool optimize_whitebox,
+  int variance_RBF_multiplier
   )
 {
 
@@ -49,6 +51,8 @@ hicam::optimizer_t::optimizer_t(
   this->vtr = vtr;
   this->use_vtr = use_vtr;
   this->rng = rng;
+  this->optimize_whitebox = optimize_whitebox;
+  this->variance_RBF_multiplier = variance_RBF_multiplier;
 
   // guideline parameters
   //---------------------------------------------------------
@@ -86,6 +90,7 @@ bool hicam::optimizer_t::checkTerminationCondition()
 void hicam::optimizer_t::initialize(elitist_archive_t & elitist_archive, unsigned int & number_of_evaluations)
 {
   // creat a new population
+
   population = std::make_shared<population_t>();
   if (fitness_function->redefine_random_initialization) {
     fitness_function->init_solutions_randomly(population, population_size, lower_init_ranges, upper_init_ranges, 0, rng);
@@ -94,7 +99,6 @@ void hicam::optimizer_t::initialize(elitist_archive_t & elitist_archive, unsigne
   {
     population->fill_uniform(population_size, number_of_parameters, lower_init_ranges, upper_init_ranges, rng);
   }
-  
   
   population->evaluate(fitness_function, 0, number_of_evaluations);
   population->setPopulationNumber(optimizer_number); // used in the restart scheme
@@ -129,6 +133,8 @@ void hicam::optimizer_t::initialize(elitist_archive_t & elitist_archive, unsigne
 void hicam::optimizer_t::generation(elitist_archive_t & elitist_archive, unsigned int & number_of_evaluations)
 {
 
+
+
   // makeSelection
   // SORTS the population based on ranks.
   // population is still the same size.
@@ -145,13 +151,11 @@ void hicam::optimizer_t::generation(elitist_archive_t & elitist_archive, unsigne
   subpopulation->elitist_archive = previous_subpopulations[0]->elitist_archive;
   subpopulations.push_back(subpopulation);
   population->sols.clear();
-
+  //std::cout<<"SUBPOPS: "<<subpopulations.size()<<std::endl;
   for(size_t i = 0; i < subpopulations.size(); ++i)
   {
-
     size_t selection_size = (size_t)(tau * subpopulations[i]->size());
     subpopulations[i]->makeSelection(selection_size, objective_ranges, rng);
- 
     // Cluster the population
     //----------------------------------------------------------------------
     size_t minimum_cluster_size;
@@ -196,10 +200,10 @@ void hicam::optimizer_t::generation(elitist_archive_t & elitist_archive, unsigne
     double subpop_number_of_elites = (tau*population_size) / ((double) subpopulations.size());
     size_t max_number_of_elites = (size_t) subpop_number_of_elites / subpopulations[i]->clusters.size();
     elitist_archive.copyElitesToClusters(subpopulations[i]->clusters, max_number_of_elites, objective_ranges, rng);
-    
+   
     // Estimate sample parameters for each cluster
     //----------------------------------------------------------------------
-    for (size_t j = 0; j < subpopulations[i]->clusters.size(); ++j) {
+    for (size_t j = 0; j < subpopulations[i]->clusters.size(); ++j) { 
       subpopulations[i]->clusters[j]->estimateParameters();
       subpopulations[i]->clusters[j]->computeParametersForSampling();
     }
@@ -209,7 +213,16 @@ void hicam::optimizer_t::generation(elitist_archive_t & elitist_archive, unsigne
     subpopulations[i]->sols.clear();
     size_t subpopulation_size = (population_size / subpopulations.size()) + ((population_size % subpopulations.size()) > i);
     size_t number_of_elites = 0;
-    generateAndEvaluateNewSolutionsToFillPopulation(*subpopulations[i], subpopulation_size, subpopulations[i]->clusters, number_of_elites, number_of_evaluations, rng);
+    vec_t N(30);
+    generateAndEvaluateNewSolutionsToFillPopulation(*subpopulations[i], N, subpopulation_size, subpopulations[i]->clusters, number_of_elites, number_of_evaluations, rng);
+    if(optimize_whitebox)
+      {
+        for (size_t j = 0; j < subpopulations[i]->clusters.size(); ++j) { 
+        matrix_t chol = subpopulations[i]->clusters[j]->getCholesky();
+        vec_t m = subpopulations[i]->clusters[j]->getMean();
+        subpopulations[i]->clusters[j]->white_box_optimization(i, fitness_function, number_of_evaluations, lower_param_bounds, upper_param_bounds, N, m, chol,variance_RBF_multiplier,rng);
+      }
+    }
     subpopulations[i]->compute_fitness_ranks();
  
     // Update the strategy parameters of the clusters based on the sampled solutions in the population
@@ -254,6 +267,7 @@ void hicam::optimizer_t::generation(elitist_archive_t & elitist_archive, unsigne
 
 void hicam::optimizer_t::initialize_mm(elitist_archive_t & elitist_archive, unsigned int & number_of_evaluations)
 {
+    std::cout<<"INITIALIZE MM"<<std::endl;
   // Create a new population, uniformly sampled
   //-------------------------------------------------------------
   population_pt population = std::make_shared<population_t>();
@@ -305,6 +319,7 @@ void hicam::optimizer_t::initialize_mm(elitist_archive_t & elitist_archive, unsi
 
 void hicam::optimizer_t::generation_mm(elitist_archive_t & elitist_archive, unsigned int & number_of_evaluations, bool largest_population)
 {
+
   // compute subpopulation means
   std::vector<vec_t> previous_means(subpopulations.size());
   for(size_t j = 0; j < subpopulations.size(); ++j)
@@ -315,10 +330,12 @@ void hicam::optimizer_t::generation_mm(elitist_archive_t & elitist_archive, unsi
   
   // generate offspring for each subpopulation
   //-------------------------------------------------------------
+
   size_t to_be_sampled_solutions = (size_t) ((1.0-tau) * population_size);
   for(size_t i = 0; i < subpopulations.size(); ++i) {
+    //std::cout<<"GENERATE OFFSPRING"<<std::endl;
     size_t number_of_solutions = to_be_sampled_solutions / subpopulations.size() + (( to_be_sampled_solutions % subpopulations.size()) > i);
-    generateOffspring(*subpopulations[i], number_of_solutions); // performs local ranking of solutions.
+    generateOffspring(*subpopulations[i], number_of_solutions, i); // performs local ranking of solutions.
   }
   
   // Evaluate new population + add elites
@@ -387,17 +404,18 @@ void hicam::optimizer_t::linkSubpopulations(std::vector<population_pt> & subpopu
   
 }
 
-void hicam::optimizer_t::generateOffspring(population_t & pop, size_t number_of_solutions)
+void hicam::optimizer_t::generateOffspring(population_t & pop, size_t number_of_solutions, size_t i)
 {
   
   // sort the population into a selection.
   //----------------------------------------------------
+  //std::cout<<"TAU: "<<tau<<std::endl;
+  //std::cout<<"POP SIZE: "<<pop.size()<<std::endl;
   size_t selection_size = std::max((size_t) 1, (size_t)(tau * pop.size()));
   pop.compute_fitness_ranks();
   vec_t local_objective_ranges;
   pop.objectiveRanges(local_objective_ranges);
   pop.makeSelection(selection_size, objective_ranges, rng);
-  
   // Cluster the population
   //----------------------------------------------------------------------
   size_t minimum_cluster_size;
@@ -408,10 +426,16 @@ void hicam::optimizer_t::generateOffspring(population_t & pop, size_t number_of_
   else {
     minimum_cluster_size = 2 + log(number_of_parameters);
   }
+  
+  //std::cout<<"MIN CLUSTER SIZE: "<<minimum_cluster_size<<std::endl;
+  //std::cout<<"MIX COMPONENT: "<<number_of_mixing_components<<std::endl;
+  //std::cout<<"SUBPOP SIZE: "<<subpopulations.size()<<std::endl;
+  //std::cout<<"SELECTION SIZE: "<<selection_size <<std::endl;
   size_t number_of_clusters = std::min(number_of_mixing_components / subpopulations.size(), selection_size / minimum_cluster_size);
+  //std::cout<<"NUMBER OF CLUSTERS: "<<number_of_clusters<<std::endl<<std::endl;
   number_of_clusters = std::max((size_t) 1, number_of_clusters);
   size_t cluster_size = std::max(minimum_cluster_size, 2*selection_size / number_of_clusters);
-  
+
   if(number_of_clusters == 1) { cluster_size = selection_size; }
   if(number_of_clusters == 2) { cluster_size = std::max(minimum_cluster_size, (size_t) (1.5*selection_size / number_of_clusters)); }
 
@@ -428,7 +452,7 @@ void hicam::optimizer_t::generateOffspring(population_t & pop, size_t number_of_
   //----------------------------------------------------------------------
   pop.sols.clear();
   pop.sols.reserve(number_of_solutions);
-  
+
   for (size_t i = 0; i < pop.clusters.size(); ++i)
   {
     int cluster_sample_size = (int) ((number_of_solutions / pop.clusters.size()) + ((number_of_solutions % pop.clusters.size()) > i));
@@ -440,12 +464,13 @@ void hicam::optimizer_t::generateOffspring(population_t & pop, size_t number_of_
       number_of_ams_solutions = (size_t)(0.5*tau*((double)number_of_solutions / pop.clusters.size()));
     }
     
-    
+    //std::cout<<"ESTIMATE PARAMETERS"<<i<<std::endl;
     pop.clusters[i]->estimateParameters();
     pop.clusters[i]->computeParametersForSampling();
     
     std::vector<solution_pt> new_solutions(cluster_sample_size);
-    pop.clusters[i]->generateNewSolutions(new_solutions, cluster_sample_size, number_of_ams_solutions, rng);
+    vec_t dummy;
+    pop.clusters[i]->generateNewSolutions(new_solutions, dummy, cluster_sample_size, number_of_ams_solutions, rng);
     
     pop.addSolutions(new_solutions);
   }
@@ -597,7 +622,8 @@ void hicam::optimizer_t::generateAndEvaluateNewSolutionsToFillPopulationNoElites
     if (number_of_generations > 1 && clusters[i]->previous != nullptr) {
       number_of_ams_solutions = (size_t)(0.5*tau*((double)number_of_solutions_to_generate / clusters.size()));
     }
-    clusters[i]->generateNewSolutions(new_solutions, cluster_sample_size, number_of_ams_solutions, rng);
+    vec_t dummy;
+    clusters[i]->generateNewSolutions(new_solutions, dummy, cluster_sample_size, number_of_ams_solutions, rng);
     
     
     population.addSolutions(new_solutions);
@@ -613,9 +639,8 @@ void hicam::optimizer_t::generateAndEvaluateNewSolutionsToFillPopulationNoElites
 }
 
 
-void hicam::optimizer_t::generateAndEvaluateNewSolutionsToFillPopulation(population_t & population, size_t number_of_solutions_to_generate, const std::vector<cluster_pt> & clusters, size_t & number_of_elites, unsigned int & number_of_evaluations, rng_pt & rng) const
-{
-  
+void hicam::optimizer_t::generateAndEvaluateNewSolutionsToFillPopulation(population_t & population, vec_t& N, size_t number_of_solutions_to_generate, const std::vector<cluster_pt> & clusters, size_t & number_of_elites, unsigned int & number_of_evaluations, rng_pt & rng) const
+{                           
   // solutions (selection of it) is copied to the clusters.
   size_t initial_population_size = population.size();
   population.sols.reserve(initial_population_size + number_of_solutions_to_generate);
@@ -634,7 +659,6 @@ void hicam::optimizer_t::generateAndEvaluateNewSolutionsToFillPopulation(populat
     for (size_t j = 0; j < clusters[i]->elites.size(); ++j) {
       clusters[i]->elites[j]->elite_origin = nullptr;
     }
-    
     
   }
   
@@ -659,8 +683,7 @@ void hicam::optimizer_t::generateAndEvaluateNewSolutionsToFillPopulation(populat
     if (number_of_generations > 1 && clusters[i]->previous != nullptr) {
       number_of_ams_solutions = (size_t)(0.5*tau*((double)number_of_solutions_to_generate / clusters.size()));
     }
-    clusters[i]->generateNewSolutions(new_solutions, cluster_sample_size, number_of_ams_solutions, rng);
-
+    clusters[i]->generateNewSolutions(new_solutions, N, cluster_sample_size, number_of_ams_solutions, rng);
     
     population.addSolutions(new_solutions);
     

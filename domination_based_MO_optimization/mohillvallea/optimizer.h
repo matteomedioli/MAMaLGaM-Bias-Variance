@@ -36,7 +36,9 @@ namespace hicam
       unsigned int maximum_number_of_seconds,
       double vtr,
       bool use_vtr,
-      rng_pt rng
+      rng_pt rng,
+      bool optimize_whitebox,
+      int variance_RBF_multiplier
     );
 
     ~optimizer_t();
@@ -46,6 +48,7 @@ namespace hicam
     int local_optimizer_index;
     int optimizer_number;
     double HL_tol;
+
 
     // run-time control
     void initialize(elitist_archive_t & elitist_archive, unsigned int & number_of_evaluations);
@@ -85,7 +88,6 @@ namespace hicam
     vec_t  upper_init_ranges;
     vec_t  lower_param_bounds;
     vec_t  upper_param_bounds;
-
     unsigned int maximum_number_of_evaluations;
     unsigned int maximum_number_of_seconds;
     double vtr;
@@ -96,13 +98,16 @@ namespace hicam
     size_t no_improvement_stretch;
     unsigned int number_of_evaluations;
     double average_edge_length;
-
+  
     rng_pt rng;
 
-    void generateOffspring(population_t & subpopulation, size_t number_of_solutions);
+    bool optimize_whitebox;
+    int variance_RBF_multiplier;
+
+    void generateOffspring(population_t & subpopulation, size_t number_of_solutions, size_t i);
     void linkSubpopulations(std::vector<population_pt> & subpopulations, std::vector<population_pt> & previous_subpopulations, const std::vector<vec_t> & previous_means) const;
     
-    void generateAndEvaluateNewSolutionsToFillPopulation(population_t & population, size_t population_size, const std::vector<cluster_pt> & clusters, size_t & number_of_elites, unsigned int & number_of_evaluations, rng_pt & rng) const;
+    void generateAndEvaluateNewSolutionsToFillPopulation(population_t & population, vec_t& N, size_t population_size, const std::vector<cluster_pt> & clusters, size_t & number_of_elites, unsigned int & number_of_evaluations, rng_pt & rng) const;
     void generateAndEvaluateNewSolutionsToFillPopulationNoElites(population_t & population, size_t number_of_solutions_to_generate, const std::vector<cluster_pt> & clusters, unsigned int & number_of_evaluations, rng_pt & rng) const;
 
     void updateStrategyParameters(const population_t & population, std::vector<cluster_pt> & clusters, const elitist_archive_t & previous_elitist_archive, size_t & no_improvement_stretch, const size_t maximum_no_improvement_stretch, const vec_t & objective_ranges) const;

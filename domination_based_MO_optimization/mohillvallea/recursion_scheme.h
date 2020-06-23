@@ -43,7 +43,9 @@ namespace hicam
       bool print_generational_statistics,
       const std::string & write_directory,
       const std::string & file_appendix,
-      bool print_verbose_overview
+      bool print_verbose_overview,
+      bool optimize_whitebox,
+      int variance_RBF_multiplier
     );
 
     ~recursion_scheme_t();
@@ -86,6 +88,8 @@ namespace hicam
     std::string write_directory;
     std::string file_appendix;
     bool print_verbose_overvie;
+    bool optimize_whitebox;
+    int variance_RBF_multiplier;
 
 
     // essential data members

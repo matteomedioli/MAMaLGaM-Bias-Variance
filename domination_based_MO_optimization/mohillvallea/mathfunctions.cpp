@@ -181,7 +181,7 @@ namespace hicam
   // sample the parameter from a normal distribution
   // make sure it is within the parameter domain.
   //-------------------------------------------------------------------------
-  unsigned int sample_normal(vec_t & sample, vec_t & sample_transformed, const size_t problem_size, const vec_t & mean, const matrix_t & MatrixRoot, const double Multiplier, bool use_boundary_repair, const vec_t & lower_param_range, const vec_t & upper_param_range, rng_pt rng)
+  unsigned int sample_normal(vec_t & sample, vec_t & N, vec_t & sample_transformed, const size_t problem_size, const vec_t & mean, const matrix_t & MatrixRoot, const double Multiplier, bool use_boundary_repair, const vec_t & lower_param_range, const vec_t & upper_param_range, rng_pt rng)
   {
 
     // Sample independent standard normal variables Z = N(0,1)
@@ -194,7 +194,6 @@ namespace hicam
 
 
     std::normal_distribution<double> std_normal(0.0, 1.0);
-
     // try using the normal distribution
     while (!sample_in_range && attempts < 100)
     {
@@ -222,20 +221,19 @@ namespace hicam
       sample_transformed = vec_t(problem_size, 0.0);
       // std::cout << "Warning: Too many sample attempts. Sampling uniform." << std::endl;
     }
-
+    N = z;
     return attempts;
-
   }
 
   
   // sample the parameter from a normal distribution
   // make sure it is within the parameter domain.
   //-------------------------------------------------------------------------
-  unsigned int sample_normal(vec_t & sample, const size_t problem_size, const vec_t & mean, const matrix_t & chol, bool use_boundary_repair, const vec_t & lower_param_range, const vec_t & upper_param_range, rng_pt rng)
+  unsigned int sample_normal(vec_t & sample, vec_t & N, const size_t problem_size, const vec_t & mean, const matrix_t & chol, bool use_boundary_repair, const vec_t & lower_param_range, const vec_t & upper_param_range, rng_pt rng)
   {
     vec_t sample_transformed;
     double multiplier = 1.0;
-    return sample_normal(sample, sample_transformed, problem_size, mean, chol, multiplier, use_boundary_repair, lower_param_range, upper_param_range, rng);
+    return sample_normal(sample, N, sample_transformed, problem_size, mean, chol, multiplier, use_boundary_repair, lower_param_range, upper_param_range, rng);
   }
 
   unsigned int sample_normal_univariate(vec_t & sample, const size_t problem_size, const vec_t & mean, const vec_t & univariate_cholesky, bool use_boundary_repair, const vec_t & lower_param_range, const vec_t & upper_param_range, rng_pt rng)

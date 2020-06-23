@@ -42,7 +42,9 @@ hicam::recursion_scheme_t::recursion_scheme_t
   bool print_generational_statistics,
   const std::string & write_directory,
   const std::string & file_appendix,
-  bool print_verbose_overview
+  bool print_verbose_overview,
+  bool optimize_whitebox,
+  int variance_RBF_multiplier
 )
 {
   this->fitness_function = fitness_function;
@@ -66,9 +68,10 @@ hicam::recursion_scheme_t::recursion_scheme_t
   this->file_appendix = file_appendix;
   this->number_of_subgenerations_per_population_factor = number_of_subgenerations_per_population_factor;
   this->print_verbose_overview = print_verbose_overview;
-  
+  this->optimize_whitebox=optimize_whitebox;
   this->elitist_archive_size_target = elitist_archive_size_target;
   this->approximation_set_size = approximation_set_size;
+  this->variance_RBF_multiplier = variance_RBF_multiplier;
 
   // truncate initialization ranges to allowable ranges in of the objective function
   vec_t lower_range_bounds, upper_range_bounds;
@@ -79,7 +82,6 @@ hicam::recursion_scheme_t::recursion_scheme_t
     this->lower_init_ranges[i] = std::max(lower_init_ranges[i], lower_range_bounds[i]);
     this->upper_init_ranges[i] = std::min(upper_init_ranges[i], upper_range_bounds[i]);
   }
-
 }
 
 hicam::recursion_scheme_t::~recursion_scheme_t() {}
@@ -227,12 +229,13 @@ void hicam::recursion_scheme_t::generationalStepAllPopulationsRecursiveFold(size
         switch (version)
         {
 
-        case 0: 
+        case 0:
           populations[population_index]->generation(*elitist_archive, number_of_evaluations);
           break;
 
         default:
           bool largest_population = (population_index == populations.size() - 1);
+
           populations[population_index]->generation_mm(*elitist_archive, number_of_evaluations, largest_population);
           break;
         }
@@ -245,7 +248,7 @@ void hicam::recursion_scheme_t::generationalStepAllPopulationsRecursiveFold(size
           }
           return;
         }
-        
+
         // if(maximum_number_of_populations == 1)
         {
           // if(populations[population_index]->number_of_generations % 10 == 0) // reduce computation time
@@ -254,7 +257,7 @@ void hicam::recursion_scheme_t::generationalStepAllPopulationsRecursiveFold(size
             {
               approximation_set->computeApproximationSet(approximation_set_size, populations, elitist_archive, (version != 0), false);
             }
-            
+
             if (write_generational_statistics)
             {
               if(maximum_number_of_populations == 1 && (populations.back()->number_of_generations < 50 || populations.back()->number_of_generations % 50 == 0))
@@ -268,9 +271,7 @@ void hicam::recursion_scheme_t::generationalStepAllPopulationsRecursiveFold(size
                   writePopulation(i, *populations[i]);
                 }
               }
-              
               writeGenerationalSolutions(*approximation_set, false, number_of_solution_sets_written);
-              
             }
           }
         }
@@ -291,15 +292,14 @@ void hicam::recursion_scheme_t::generationalStepAllPopulations()
 
   while (population_index_smallest <= population_index_biggest)
   {
+
     if (!populations[population_index_smallest]->terminated) {
       break;
     }
 
     population_index_smallest++;
   }
-
   generationalStepAllPopulationsRecursiveFold(population_index_smallest, population_index_biggest);
-  
   approximation_set->computeApproximationSet(approximation_set_size, populations, elitist_archive, (version != 0), true);
 }
 
@@ -337,7 +337,7 @@ void hicam::recursion_scheme_t::run()
         fitness_function, lower_init_ranges, upper_init_ranges,
         local_optimizer_index, HL_tol, population_size, number_of_mixing_components, population_index,
         maximum_number_of_evaluations, maximum_number_of_seconds, 
-        vtr, use_vtr, rng);
+        vtr, use_vtr, rng, optimize_whitebox, variance_RBF_multiplier);
 
       switch (version)
       {
@@ -355,6 +355,7 @@ void hicam::recursion_scheme_t::run()
       if(write_generational_solutions || write_generational_statistics || maximum_number_of_populations > 0)
       {
         approximation_set->computeApproximationSet(approximation_set_size, populations, elitist_archive, (version != 0), false);
+
       }
       
       if (write_generational_statistics) {
@@ -362,21 +363,21 @@ void hicam::recursion_scheme_t::run()
       }
       if (write_generational_solutions)
       {
+
         for(size_t i = 0; i < populations.size(); ++i)
         {
           if(!populations[i]->terminated) {
             writePopulation(i, *populations[i]);
           }
         }
-        
         writeGenerationalSolutions(*approximation_set, false, number_of_solution_sets_written);
-        
+
       }
       
     }
 
     generationalStepAllPopulations();
-
+    /* PROBLEM HERE */
     total_number_of_generations++;
   }
 
@@ -651,7 +652,7 @@ void hicam::recursion_scheme_t::writeGenerationalStatisticsForOnePopulation(cons
   double GD_appr = 0.0;
   double IGDX_appr = 0.0;
   double SR_appr = 0.0;
-  
+
   if(enable_hyper_volume) {
     HV_appr = approximation_set->compute2DHyperVolume(fitness_function->hypervolume_max_f1, fitness_function->hypervolume_max_f1);
   }
@@ -774,16 +775,17 @@ void hicam::recursion_scheme_t::writeGenerationalStatisticsForOnePopulation(cons
 
 void hicam::recursion_scheme_t::writeGenerationalSolutions(elitist_archive_t & approximation_set, bool final, unsigned int & number_of_solution_sets_written)
 {
+
   char  string[1000];
 
   // Approximation set
   if (final) {
-    sprintf(string, "%sapproximation_set_final%s.dat", write_directory.c_str(), file_appendix.c_str());
+    sprintf(string, "%sapproximation_set_final.dat", write_directory.c_str());
   }
   else {
     sprintf(string, "%sapproximation_set_generation%s_%05d.dat", write_directory.c_str(), file_appendix.c_str(), number_of_solution_sets_written);
   }
-  
+
   //hvc_pt hvc = std::make_shared<hvc_t>(fitness_function);
   //std::vector<population_pt> archives;
   //unsigned int temp_fevals = 0;

@@ -106,6 +106,7 @@ namespace hicam
     //-----------------------------------------
     double param_distance(const solution_t & sol2) const;
     double param_distance(const vec_t & param2) const;
+    std::vector<solution_t> remove_RBF();
 
   };
 

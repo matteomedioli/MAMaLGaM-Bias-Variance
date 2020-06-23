@@ -53,7 +53,7 @@ namespace hicam
     void fill_uniform(size_t sample_size, size_t problem_size, const vec_t & lower_param_range, const vec_t & upper_param_range, rng_pt rng);
     unsigned int fill_normal_univariate(size_t sample_size, size_t problem_size, const vec_t & mean, const vec_t & univariate_cholesky, bool use_boundary_repair, const vec_t & lower_param_range, const vec_t & upper_param_range, size_t number_of_elites, rng_pt rng);
 
-    unsigned int fill_vector_normal(std::vector<solution_pt> & solutions, size_t sample_size, size_t problem_size, const vec_t & mean, const matrix_t & cholesky, bool use_boundary_repair, const vec_t & lower_param_range, const vec_t & upper_param_range, size_t number_of_elites, rng_pt rng) const;
+    unsigned int fill_vector_normal(std::vector<solution_pt> & solutions, vec_t & N, size_t sample_size, size_t problem_size, const vec_t & mean, const matrix_t & cholesky, bool use_boundary_repair, const vec_t & lower_param_range, const vec_t & upper_param_range, size_t number_of_elites, rng_pt rng) const;
     unsigned int fill_vector_normal_univariate(std::vector<solution_pt> & solutions, size_t sample_size, size_t problem_size, const vec_t & mean, const vec_t & univariate_cholesky, bool use_boundary_repair, const vec_t & lower_param_range, const vec_t & upper_param_range, size_t number_of_elites, rng_pt rng) const;
 
     void fill_maximin(size_t sample_size, size_t problem_size, const vec_t & lower_param_range, const vec_t & upper_param_range, const size_t number_of_elites, rng_pt rng);
@@ -148,6 +148,9 @@ namespace hicam
     // based on sol->obj_transformed
     double objective_distance(const population_t & pop, const vec_t & obj_ranges) const;
     double param_distance(const population_t & pop) const;
+
+    //WHITE BOX OPTIMIZATION
+    void white_box_optimization(size_t i, fitness_pt fitness, unsigned int & number_of_evaluations, const vec_t & lower_param_range, const vec_t & upper_param_range, vec_t & N, const vec_t & mean, const matrix_t & cholesky, const int varm, rng_pt rng);
 
   };
   

@@ -41,8 +41,8 @@ namespace hicam
   // returns the number of trials before an in-range sample is found.
   // on fail, sample uniform.
   //----------------------------------------------
-  unsigned int sample_normal(vec_t & sample, vec_t & sample_transformed, const size_t problem_size, const vec_t & mean, const matrix_t & MatrixRoot, const double multiplier, bool use_boundary_repair, const vec_t & lower_param_range, const vec_t & upper_param_range, rng_pt rng);
-  unsigned int sample_normal(vec_t & sample, const size_t problem_size, const vec_t & mean, const matrix_t & chol, bool use_boundary_repair, const vec_t & lower_param_range, const vec_t & upper_param_range, rng_pt rng);
+  unsigned int sample_normal(vec_t & sample, vec_t & N, vec_t & sample_transformed, const size_t problem_size, const vec_t & mean, const matrix_t & MatrixRoot, const double multiplier, bool use_boundary_repair, const vec_t & lower_param_range, const vec_t & upper_param_range, rng_pt rng);
+  unsigned int sample_normal(vec_t & sample, vec_t & N, const size_t problem_size, const vec_t & mean, const matrix_t & chol, bool use_boundary_repair, const vec_t & lower_param_range, const vec_t & upper_param_range, rng_pt rng);
   unsigned int sample_normal_univariate(vec_t & sample, const size_t problem_size, const vec_t & mean, const vec_t & univariate_cholesky, bool use_boundary_repair, const vec_t & lower_param_range, const vec_t & upper_param_range, rng_pt rng);
 
   void sample_uniform(vec_t & sample, const size_t problem_size, const vec_t & lower_user_range, const vec_t & upper_user_range,  rng_pt rng);

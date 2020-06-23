@@ -1017,7 +1017,7 @@ namespace gomea
       
       // Approximation set
       if (final) {
-        sprintf(string, "%sapproximation_set_final%s.dat", write_directory.c_str(), file_appendix.c_str());
+        sprintf(string, "%sapproximation_set_final.dat", write_directory.c_str());
       }
       else {
         sprintf(string, "%sapproximation_set_generation%s_%05d.dat", write_directory.c_str(), file_appendix.c_str(), total_number_of_generations);

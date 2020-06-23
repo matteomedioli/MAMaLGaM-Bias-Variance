@@ -414,7 +414,7 @@ void hicam::iamalgam_t::computeParametersForSampling()
 
 
 
-void hicam::iamalgam_t::generateNewSolutions(std::vector<solution_pt> & solutions, size_t number_of_solutions, size_t number_of_ams_solutions, rng_pt & rng)
+void hicam::iamalgam_t::generateNewSolutions(std::vector<solution_pt> & solutions, vec_t & N, size_t number_of_solutions, size_t number_of_ams_solutions, rng_pt & rng)
 {
 
   // Sample new population
@@ -426,7 +426,7 @@ void hicam::iamalgam_t::generateNewSolutions(std::vector<solution_pt> & solution
   unsigned int out_of_bounds_draws = 0;
   unsigned int samples_drawn_from_normal = 0;
 
-  out_of_bounds_draws = this->fill_vector_normal(solutions, number_of_solutions, fitness_function->number_of_parameters, mean, cholesky, use_boundary_repair, lower_param_bounds, upper_param_bounds, 0, rng);
+  out_of_bounds_draws = this->fill_vector_normal(solutions,N, number_of_solutions, fitness_function->number_of_parameters, mean, cholesky, use_boundary_repair, lower_param_bounds, upper_param_bounds, 0, rng);
 
   // apply the AMS
   // 

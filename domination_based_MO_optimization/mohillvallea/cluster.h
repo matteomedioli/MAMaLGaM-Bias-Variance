@@ -46,9 +46,10 @@ namespace hicam
     virtual bool updateStrategyParameters(const elitist_archive_t & elitist_archive, size_t & no_improvement_stretch, const size_t maximum_no_improvement_stretch);
 
     virtual void computeParametersForSampling();
-    virtual void generateNewSolutions(std::vector<solution_pt> & solutions, size_t number_of_solutions, size_t number_of_ams_solutions, rng_pt & rng);
+    virtual void generateNewSolutions(std::vector<solution_pt> & solutions, vec_t &N,  size_t number_of_solutions, size_t number_of_ams_solutions, rng_pt & rng);
     virtual size_t recommended_popsize(size_t number_of_parameters) const;
-
+    virtual matrix_t getCholesky();
+    virtual vec_t getMean();
     virtual vec_t getVec(std::string variable_name);
     virtual double getDouble(std::string variable_name);
     virtual matrix_t getMatrix(std::string variable_name);

@@ -37,8 +37,10 @@ bool write_generational_solutions;
 std::string write_directory;
 bool enable_niching;
 std::string file_appendix;
-hicam::fitness_pt mo_fitness_function;
+hicam::fitness_pt mo_fitness_function; 
 hicam::vec_t mo_lower_init_ranges, mo_upper_init_ranges;
+int variance_RBF_multiplier;
+size_t rbf_number_of_radials;
 double HL_tol; // no longer used
 
 // IMS population sizing scheme
@@ -47,10 +49,12 @@ unsigned int maximum_number_of_populations;
 bool print_verbose_overview;
 bool print_generational_statistics;
 
+bool optimize_whitebox;
+    
 
 void printUsage(void)
-{
-  printf("Usage: uhv_gomea [-?] [-P] [-s] [-n] [-w] [-v] [-r] pro dim low upp pop ela apprs eva sec vtr rnd wrp\n"); // [-e] [-f]
+{      
+  printf("Usage: mamalgam [-?] [-P] [-s] [-n] [-w] [-v] [-r] [-w] pro dim low upp pop ela apprs eva sec vtr varm rnd wrp\n"); // [-e] [-f]
   printf(" -?: Prints out this usage information.\n");
   printf(" -P: Prints out a list of all installed optimization problems.\n");
   printf(" -s: Enables computing and writing of statistics every generation.\n");
@@ -71,6 +75,7 @@ void printUsage(void)
   printf("  eva: Maximum number of evaluations of the multi-objective problem allowed.\n");
   printf("  sec: Time limit in seconds.\n");
   printf("  vtr: The value to reach. If the hypervolume of the best feasible solution reaches this value, termination is enforced (if -r is specified).\n");
+  printf("  varm: Variance multiplier for RBF whitebox-optimization.\n");
   printf("  rnd: Random seed.\n");
   printf("  wrp: write path.\n");
   exit(0);
@@ -141,6 +146,7 @@ void parseOptions(int argc, char **argv, int *index)
           case 'w': write_generational_solutions = 1; break;
           case 'v': print_verbose_overview = 1; break;
           case 'n': enable_niching = true; break;
+          case 'W': optimize_whitebox = true; break;
           // case 'e': collect_all_mo_sols_in_archive = true; break;
           // case 'f': use_finite_differences = true; break;
           case 'r': use_vtr = 1; break; // HV-based vtr (note, use_vtr = 2 is an IGD-based VTR)
@@ -158,7 +164,7 @@ void parseParameters(int argc, char **argv, int *index)
 {
   int noError;
   
-  int n_params = 12;
+  int n_params = 14;
   if ((argc - *index) != n_params)
   {
     printf("Number of parameters is incorrect, require %d parameters (you provided %d).\n\n", n_params, (argc - *index));
@@ -168,26 +174,27 @@ void parseParameters(int argc, char **argv, int *index)
   
   noError = 1;
   noError = noError && sscanf(argv[*index + 0], "%d", &problem_index);
-  noError = noError && sscanf(argv[*index + 1], "%zd", &mo_number_of_parameters);
-  noError = noError && sscanf(argv[*index + 2], "%lf", &lower_init);
-  noError = noError && sscanf(argv[*index + 3], "%lf", &upper_init);
-  noError = noError && sscanf(argv[*index + 4], "%zd", &popsize);
-  noError = noError && sscanf(argv[*index + 5], "%zu", &elitist_archive_size_target);
-  noError = noError && sscanf(argv[*index + 6], "%zd", &approximation_set_size);
-  noError = noError && sscanf(argv[*index + 7], "%d", &maximum_number_of_mo_evaluations);
-  noError = noError && sscanf(argv[*index + 8], "%d", &maximum_number_of_seconds);
-  noError = noError && sscanf(argv[*index + 9], "%lf", &value_to_reach);
-  noError = noError && sscanf(argv[*index + 10], "%d", &random_seed);
-  write_directory = argv[*index + 11];
-  
+  noError = noError && sscanf(argv[*index + 1], "%ld", &rbf_number_of_radials);
+  noError = noError && sscanf(argv[*index + 2], "%zd", &mo_number_of_parameters);
+  noError = noError && sscanf(argv[*index + 3], "%lf", &lower_init);
+  noError = noError && sscanf(argv[*index + 4], "%lf", &upper_init);
+  noError = noError && sscanf(argv[*index + 5], "%zd", &popsize);
+  noError = noError && sscanf(argv[*index + 6], "%zu", &elitist_archive_size_target);
+  noError = noError && sscanf(argv[*index + 7], "%zd", &approximation_set_size);
+  noError = noError && sscanf(argv[*index + 8], "%d", &maximum_number_of_mo_evaluations);
+  noError = noError && sscanf(argv[*index + 9], "%d", &maximum_number_of_seconds);
+  noError = noError && sscanf(argv[*index + 10], "%lf", &value_to_reach);
+  noError = noError && sscanf(argv[*index + 11], "%d", &variance_RBF_multiplier);
+  noError = noError && sscanf(argv[*index + 12], "%d", &random_seed);
+  write_directory = argv[*index + 13];
   if (!noError)
   {
     printf("Error parsing parameters.\n\n");
     printUsage();
   }
   
-}
-
+} 
+ 
 void checkOptions(void)
 {
   mo_fitness_function = getObjectivePointer(problem_index);
@@ -200,7 +207,24 @@ void checkOptions(void)
     exit(0);
   }
   
-  mo_fitness_function->set_number_of_parameters(mo_number_of_parameters);
+  if (problem_index!=60)
+    mo_fitness_function->set_number_of_parameters(mo_number_of_parameters);
+  else
+  {
+    mo_fitness_function->set_number_of_radial(rbf_number_of_radials);
+    if (mo_number_of_parameters <= 0)
+    {
+      printf("\n");
+      printf("Error: number of MO parameters <= 0 (read: %d). Require MO number of parameters >= 1.", (int) mo_number_of_parameters);
+      printf("\n\n");
+      exit(0);
+    }
+    size_t rbf_param = 3*rbf_number_of_radials;    
+    mo_fitness_function->set_number_of_parameters(rbf_param);
+    std::cout<<mo_fitness_function->number_of_parameters<<std::endl;
+  }
+
+  
 
   if (mo_number_of_parameters <= 0)
   {
@@ -210,7 +234,7 @@ void checkOptions(void)
     
     exit(0);
   }
-  
+
   if (elitist_archive_size_target <= 0)
   {
     printf("\n");
@@ -291,7 +315,7 @@ int main(int argc, char **argv)
   // create optimizer
   if(print_verbose_overview)
   {
-    std::cout << "Problem settings:\n\tfunction_name = " << mo_fitness_function->name() << "\n\tproblem_index = " << problem_index << "\n\tmo_number_of_parameters = " << mo_number_of_parameters << "\n\tinit_range = [" << lower_init << ", " << upper_init << "]\n\tHV reference point = " << mo_fitness_function->hypervolume_max_f0 << ", " << mo_fitness_function->hypervolume_max_f1 << "\n";
+    std::cout << "Problem settings:\n\tfunction_name = " << mo_fitness_function->name() << "\n\tproblem_index = " << problem_index << "\n\tmo_number_of_parameters = " << mo_fitness_function->number_of_parameters << "\n\tinit_range = [" << lower_init << ", " << upper_init << "]\n\tNumber of radials = " <<mo_fitness_function->number_of_radial<<"\n\tHV reference point = " << mo_fitness_function->hypervolume_max_f0 << ", " << mo_fitness_function->hypervolume_max_f1 << "\n";
     std::cout << "Run settings:\n\tmax_number_of_MO_evaluations = " << maximum_number_of_mo_evaluations <<"\n\tmaximum_number_of_seconds = " << maximum_number_of_seconds << "\n\tuse_vtr = " << use_vtr << "\n\tvtr = " << value_to_reach << "\n";
     std::cout << "Archive settings:\n\tElitist_archive_target_size = " << elitist_archive_size_target << "\n\tApproximation_set_size = " <<  approximation_set_size << "\n";
   }
@@ -301,25 +325,27 @@ int main(int argc, char **argv)
   
   // int MO_popsize = (int) (number_of_reference_points * popsize);
     std::stringstream ss;
-    
+     
     // mamalgam with niching is MOHillVallEA
     if(enable_niching == 0) {
       std::cout << "Optimizer settings: \n\tOptimizer = MAMaLGaM\n\t";
-      ss << "_MAMaLGaM" << file_appendix;
+      ss << "_MAMaLGaM" << file_appendix;   
     } else {
       std::cout << "Optimizer settings: \n\tOptimizer = MO-HillVallEA\n\t";
       ss << "_moHillVallEA" << file_appendix;
     }
-    
+       
     file_appendix = ss.str();
     
     print_generational_statistics = write_generational_statistics && print_verbose_overview;
-
-    std::cout << "local_optimizer_index = " << local_optimizer_index << "\n\tElitist archive size target = " << elitist_archive_size_target << "\n\tApproximation set size = " << approximation_set_size << "\n\tpopsize = " << popsize << "\n\tenable_niching = " << (enable_niching ? "yes" : "no") << "\n\trandom_seed = " << random_seed << "\n";
-    
+    std::cout << "local_optimizer_index = " << local_optimizer_index <<"\n\tPopulation size = " << popsize << "\n\tenable_niching = " << (enable_niching ? "yes" : "no") << "\n\tRBF optimization(WBO) = " << (optimize_whitebox ? "yes" : "no") << "\n\tRBF variance multiplier = " << variance_RBF_multiplier <<"\n\trandom_seed = " << random_seed << "\n";
+    std::cout << "Problem settings:\n\tfunction_name = " << mo_fitness_function->name() << "\n\tproblem_index = " << problem_index << "\n\tmo_number_of_parameters = " << mo_fitness_function->number_of_parameters << "\n\tinit_range = [" << lower_init << ", " << upper_init << "]\n\tNumber of radials = " <<mo_fitness_function->number_of_radial<<"\n\tHV reference point = " << mo_fitness_function->hypervolume_max_f0 << ", " << mo_fitness_function->hypervolume_max_f1 << "\n";
+    std::cout << "Run settings:\n\tmax_number_of_MO_evaluations = " << maximum_number_of_mo_evaluations <<"\n\tmaximum_number_of_seconds = " << maximum_number_of_seconds << "\n\tuse_vtr = " << use_vtr << "\n\tvtr = " << value_to_reach << "\n";
+    std::cout << "Archive settings:\n\tElitist_archive_target_size = " << elitist_archive_size_target << "\n\tApproximation_set_size = " <<  approximation_set_size << "\n";
+                    
     hicam::recursion_scheme_t opt(
-      mo_fitness_function,
-      mo_lower_init_ranges,
+      mo_fitness_function,  
+      mo_lower_init_ranges, 
       mo_upper_init_ranges,
       value_to_reach,
       use_vtr,
@@ -328,7 +354,7 @@ int main(int argc, char **argv)
       HL_tol,
       elitist_archive_size_target,
       approximation_set_size,
-      maximum_number_of_populations,
+      maximum_number_of_populations, 
       (int) popsize,
       number_of_subgenerations_per_population_factor,
       maximum_number_of_mo_evaluations,
@@ -339,22 +365,26 @@ int main(int argc, char **argv)
       print_generational_statistics,
       write_directory,
       file_appendix,
-      print_verbose_overview
+      print_verbose_overview,
+      optimize_whitebox,
+      variance_RBF_multiplier
       );
     opt.run();
+
+ 
   
   if(print_verbose_overview)
   {
     std::cout << "Best: \n\tHV = " << std::fixed << std::setprecision(14) << opt.approximation_set->compute2DHyperVolume(mo_fitness_function->hypervolume_max_f0, mo_fitness_function->hypervolume_max_f1) << "\n\tMO-fevals = " << opt.number_of_evaluations  << "\n\truntime = " << opt.run_time << " sec" << std::endl;
     
-    
+        
     std::cout << "pareto_front" << " = [";
     for(size_t k = 0; k < opt.approximation_set->sols.size(); ++k) {
       std::cout << "\n\t" << std::fixed << std::setw(10) << std::setprecision(4) << opt.approximation_set->sols[k]->obj;
     }
     std::cout << " ];\n";
     
-    
+       
     std::cout << "pareto_set" << " = [";
     for(size_t k = 0; k < opt.approximation_set->sols.size(); ++k)
     {

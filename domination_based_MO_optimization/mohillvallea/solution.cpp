@@ -494,6 +494,35 @@ namespace hicam
     return this->obj.scaled_euclidean_distance(other_obj, obj_ranges);
 
   }
+  
+  std::vector<solution_t> solution_t::remove_RBF()
+  {
+    // Save original Parameter before Gaussian Rank
+
+    //Ranking function over loss (this->obj[0])
+    std::vector<solution_t> new_sols;
+    std::vector<solution_t>::iterator it;
+
+    //std::cout<<"NUMBER OF PARAM"<<number_of_parameters()<<std::endl;
+    //std::cout<<"ORIGINAL SOLUTION: ";
+    //for (size_t i = 0; i<number_of_parameters(); i++)
+    //  std::cout<<this->param[i]<<" ";
+    //std::cout<<std::endl;
+    
+    for(size_t i = 0; i<number_of_parameters(); i+=3)
+    {
+        vec_t temp_parameters(this->param);
+        temp_parameters[i] = 0; //set weight of the i-th RBF = 0 (delete it)
+        solution_t new_sol(*this);
+        new_sol.param = temp_parameters;
+        new_sols.push_back(new_sol);
+        //std::cout<<"NEW SOLUTION: ";
+        //for (size_t i = 0; i<number_of_parameters(); i++)
+        //  std::cout<<new_sol.param[i]<<" ";
+        //std::cout<<std::endl<<std::endl;
+    }
+    return new_sols;
+  }
 
 }
 

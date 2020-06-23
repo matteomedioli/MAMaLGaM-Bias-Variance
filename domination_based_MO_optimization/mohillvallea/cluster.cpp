@@ -88,7 +88,7 @@ void hicam::cluster_t::computeParametersForSampling()
 
 
 
-void hicam::cluster_t::generateNewSolutions(std::vector<solution_pt> & solutions, size_t number_of_solutions, size_t number_of_ams_solutions, rng_pt & rng)
+void hicam::cluster_t::generateNewSolutions(std::vector<solution_pt> & solutions, vec_t & N, size_t number_of_solutions, size_t number_of_ams_solutions, rng_pt & rng)
 {
   std::cout << "cluster_t error 'generateNewSolutions' not implemented" << std::endl;
   assert(false);
@@ -135,4 +135,20 @@ size_t hicam::cluster_t::recommended_popsize(size_t number_of_parameters) const
   assert(false);
   
   return 0;
+}
+
+hicam::matrix_t hicam::cluster_t::getCholesky()
+{
+  std::cout << "cluster_t error 'getCholesky' not implemented" << std::endl;
+  assert(false);
+  
+  return matrix_t();
+}
+
+hicam::vec_t hicam::cluster_t::getMean()
+{
+  std::cout << "cluster_t error 'getMean' not implemented" << std::endl;
+  assert(false);
+  
+  return vec_t();
 }

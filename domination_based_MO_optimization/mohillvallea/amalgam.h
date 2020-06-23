@@ -35,13 +35,15 @@ namespace hicam
 
     bool updateStrategyParameters(const elitist_archive_t & elitist_archive, size_t & no_improvement_stretch, const size_t maximum_no_improvement_stretch);
     void computeParametersForSampling();
-    void generateNewSolutions(std::vector<solution_pt> & solutions, size_t number_of_solutions, size_t number_of_ams_solutions, rng_pt & rng);
+    
+    void generateNewSolutions(std::vector<solution_pt> & solutions, vec_t & N, size_t number_of_solutions, size_t number_of_ams_solutions, rng_pt & rng);
     size_t recommended_popsize(size_t number_of_parameters) const;
 
     vec_t getVec(std::string variable_name);
     double getDouble(std::string variable_name);
     
-
+    matrix_t getCholesky();
+    vec_t getMean();
 
   private:
 

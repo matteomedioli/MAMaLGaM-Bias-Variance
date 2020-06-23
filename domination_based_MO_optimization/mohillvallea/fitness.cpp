@@ -1,6 +1,7 @@
 
 #include "fitness.h"
 #include "mathfunctions.h"
+#include <unistd.h>
 
 
 
@@ -14,8 +15,8 @@ hicam::fitness_t::fitness_t()
   sr_available = false;
   redefine_random_initialization = false;
   
-  hypervolume_max_f0 = 1.1;
-  hypervolume_max_f1 = 1.1;
+  hypervolume_max_f0 = 400;
+  hypervolume_max_f1 = 400;
   use_lex = false;
   partial_evaluations_available = false;
   analytical_gradient_available = false;
@@ -23,7 +24,7 @@ hicam::fitness_t::fitness_t()
   partial_evaluations_available = false;
   linkage_learning_distance_matrix_available = false;
   fos_element_size_lower_bound = 1;
-  fos_element_size_upper_bound = number_of_parameters;
+  fos_element_size_upper_bound = number_of_parameters; 
   
   analytical_igd_avialable = false;
   analytical_gd_avialable = false;
@@ -49,6 +50,14 @@ void hicam::fitness_t::set_number_of_parameters(size_t & number_of_parameters)
   assert(false);
   return;
 }
+
+void hicam::fitness_t::set_number_of_radial(size_t & number_of_radial)
+{
+  std::cout << "fitness_function error 'set_number_of_parameters' not implemented" << std::endl;
+  assert(false);
+  return;
+}
+
 
 void hicam::fitness_t::get_param_bounds(vec_t & lower, vec_t & upper) const
 {

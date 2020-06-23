@@ -1,7 +1,7 @@
 
 
 /*
-
+USA QUESTO
 AMaLGaM
 
 Implementation by S.C. Maree, 2017
@@ -81,6 +81,14 @@ std::string hicam::amalgam_t::name() const
     }
   }
 }
+
+  hicam::matrix_t hicam::amalgam_t::getCholesky()
+  {
+    return this->cholesky;
+  }
+  
+  hicam::vec_t hicam::amalgam_t::getMean()
+  {return this->mean;}
 
 bool hicam::amalgam_t::adaptDistributionMultiplier(const elitist_archive_t & elitist_archive, size_t & no_improvement_stretch, const size_t maximum_no_improvement_stretch)
 {
@@ -231,7 +239,6 @@ bool hicam::amalgam_t::checkTerminationCondition()
 
 void hicam::amalgam_t::estimateParameters()
 {
-
   // Change the focus of the search to the best solution
   vec_t true_mean;
   compute_mean(true_mean);
@@ -273,6 +280,7 @@ void hicam::amalgam_t::estimateParameters()
     }
     else
     {
+      //std::cout<<"COMPUTE COVARIANCE"<<std::endl;
       bool enable_regularization = false;
       compute_covariance(true_mean, covariance, enable_regularization);
     }
@@ -520,7 +528,7 @@ void hicam::amalgam_t::computeParametersForSampling()
 
 
 
-void hicam::amalgam_t::generateNewSolutions(std::vector<solution_pt> & solutions, size_t number_of_solutions, size_t number_of_ams_solutions, rng_pt & rng)
+void hicam::amalgam_t::generateNewSolutions(std::vector<solution_pt> & solutions, vec_t & N, size_t number_of_solutions, size_t number_of_ams_solutions, rng_pt & rng)
 {
 
   // Sample new population
@@ -539,7 +547,7 @@ void hicam::amalgam_t::generateNewSolutions(std::vector<solution_pt> & solutions
   else
   {
     // todo permute
-    out_of_bounds_draws = this->fill_vector_normal(solutions, number_of_solutions, fitness_function->number_of_parameters, mean, cholesky, use_boundary_repair, lower_param_bounds, upper_param_bounds, 0, rng);
+    out_of_bounds_draws = this->fill_vector_normal(solutions, N, number_of_solutions, fitness_function->number_of_parameters, mean, cholesky, use_boundary_repair, lower_param_bounds, upper_param_bounds, 0, rng);
   }
 
 
