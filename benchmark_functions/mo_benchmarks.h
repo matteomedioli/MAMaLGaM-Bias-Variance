@@ -9,6 +9,7 @@
 #include "ZDT6.h"
 #include "BD1.h"
 #include "BD2.h"
+#include "RBF.h"
 #include "genMED_plateau.h"
 #include "genMEDmm.h"
 #include "TwoOnOne.h"
@@ -29,7 +30,6 @@
 #include "sphere-rastrigin-weak.h"
 #include "MinDistMM.h"
 #include "wfg.h"
-
 
 hicam::fitness_pt getObjectivePointer(int index)
 {
@@ -70,7 +70,6 @@ hicam::fitness_pt getObjectivePointer(int index)
     case  32: return(std::make_shared<hicam::sphereRastriginWeak_t>(10));
     case  33: return(std::make_shared<hicam::sphereRastriginStrong_t>(10));
     case  34: return(std::make_shared<hicam::MinDistmm_t>());
-      
     case  51: return(std::make_shared<hicam::wfg_t>(1));
     case  52: return(std::make_shared<hicam::wfg_t>(2));
     case  53: return(std::make_shared<hicam::wfg_t>(3));
@@ -80,8 +79,8 @@ hicam::fitness_pt getObjectivePointer(int index)
     case  57: return(std::make_shared<hicam::wfg_t>(7));
     case  58: return(std::make_shared<hicam::wfg_t>(8));
     case  59: return(std::make_shared<hicam::wfg_t>(9));
+    case  60: return(std::make_shared<hicam::RBF_t>());
   }
-  
   return nullptr;
 }
 
