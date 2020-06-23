@@ -116,6 +116,7 @@ void hillvallea::amalgam_t::generation(size_t sample_size, int & number_of_evalu
   average_fitness_history.push_back(pop->average_fitness());
   // pop->sort_on_fitness();
   pop->truncation_percentage(*pop, selection_fraction);
+  std::cout<<"TRUNCATION"<<std::endl;
 }
 
 size_t hillvallea::amalgam_t::recommended_popsize(const size_t problem_dimension) const
