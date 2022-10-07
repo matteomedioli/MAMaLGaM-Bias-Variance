@@ -2,6 +2,9 @@
 ### Improvement of the MAMaLGam algorithm for the multi-objective Bias-Variance Tradeoff task.
 To improve the performance of MAMaLGam with respect to the bias-variance trade off problem, two methods based on the addition of noise are proposed. Adding noise that leads to an improvement on an objective function generates a mutation on individuals within the clusters.
 
+Individual contributions slides: [here](https://github.com/matteomedioli/MAMaLGaM-Bias-Variance/blob/master/slides.pdf)
+Full project document: [here](https://github.com/matteomedioli/MAMaLGaM-Bias-Variance/blob/master/project.pdf)
+
 ## Credits
 S.C. Maree - [uncrowded-hypervolume](https://github.com/scmaree/uncrowded-hypervolume)
 
